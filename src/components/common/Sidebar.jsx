@@ -13,6 +13,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { name: 'Browse Food', path: '/', icon: Compass },
     { name: 'Flash Deals', path: '/flash-deals', icon: Flame },
     { name: 'Macro Budgeter', path: '/macros', icon: Dumbbell },
+    { name: 'User Dashboard', path: '/dashboard', icon: LayoutDashboard, desc: 'Live analytics & tracks' },
     { name: 'Group Orders', path: '/group-order', icon: Users },
     { name: 'Mood Analyzer', path: '/mood', icon: Smile },
     { name: 'Mystery Box', path: '/mystery-box', icon: Gift },
@@ -111,7 +112,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           </div>
 
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400 font-mono">
-            V1.0.0-PROD • 2026
+            Maded by BlueeWahale 2026
           </div>
         </div>
       </aside>

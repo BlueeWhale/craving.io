@@ -9,6 +9,9 @@ export const CartProvider = ({ children }) => {
     return localCart ? JSON.parse(localCart) : [];
   });
 
+  // Global Global Diet Preference Filter State Configured
+  const [dietPreference, setDietPreference] = useState('Both'); // 'Veg', 'Non-Veg', 'Both'
+
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
@@ -18,13 +21,11 @@ export const CartProvider = ({ children }) => {
       const existingItemIdx = prevCart.findIndex((item) => item._id === foodItem._id);
       
       if (existingItemIdx > -1) {
-        // Create shallow copy of collection to maintain immutable update patterns
         const updatedCart = [...prevCart];
         updatedCart[existingItemIdx].quantity += 1;
         return updatedCart;
       }
       
-      // Append brand-new item payload with a default tracking quantity unit
       return [...prevCart, { ...foodItem, quantity: 1 }];
     });
   };
@@ -61,7 +62,9 @@ export const CartProvider = ({ children }) => {
       updateQuantity, 
       clearCart, 
       cartTotal, 
-      cartItemCount 
+      cartItemCount,
+      dietPreference,      // <-- FIXED: Pass down preference variable
+      setDietPreference    // <-- FIXED: Pass down state modifier node
     }}>
       {children}
     </CartContext.Provider>

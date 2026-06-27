@@ -1,13 +1,14 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import google_pay from '../assets/payment/gpay.png';
 import phone_pe from '../assets/payment/phonepe.png';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import { MapPin, CreditCard, ShieldCheck, ShoppingBag, Loader2, Smartphone, Landmark, Navigation, QrCode } from 'lucide-react';
+import { MapPin, CreditCard, ShieldCheck, ShoppingBag, Loader2, Smartphone, Landmark, Navigation, QrCode, Award } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import TrackingMap from '../components/order/TrackingMap';
+import OrderFeedbackModal from '../components/order/OrderFeedbackModal'; // <-- 1. IMPORTED NEW FEEDBACK MODAL
 
 const Checkout = () => {
   const { cart, cartTotal, clearCart } = useContext(CartContext);
@@ -20,13 +21,34 @@ const Checkout = () => {
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
 
+  // Feedback Modal Controls State Channels
+  const [feedbackOpen, setFeedbackOpen] = useState(false); // <-- 2. MODAL TRIGGER STATE
+
   // Detailed Form States for Payment Options
-  const [selectedUpiApp, setSelectedUpiApp] = useState('GPay');
+  const [selectedUpiApp, setSelectedUpiApp] = useState('GPay'); // GPay, PhonePe, Custom
   const [upiId, setUpiId] = useState('');
   const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvv: '', name: '' });
+  
+  // Custom QR Countdown State (300 Seconds = 5 Mins)
+  const [qrCountdown, setQrCountdown] = useState(300);
 
   const deliveryFee = cartTotal > 500 ? 0 : 40;
   const finalGrandTotal = cartTotal + deliveryFee + 18;
+
+  // QR Code Timer Effect
+  useEffect(() => {
+    let timer;
+    if (paymentMethod === 'UPI' && selectedUpiApp === 'Custom' && qrCountdown > 0) {
+      timer = setInterval(() => setQrCountdown((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [paymentMethod, selectedUpiApp, qrCountdown]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   const handleAutoLocation = () => {
     if (!navigator.geolocation) return alert('Aapka browser GPS support nahi karta.');
@@ -47,13 +69,9 @@ const Checkout = () => {
   };
 
   const handlePlaceOrder = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!address) return alert('Please enter your delivery destination details.');
     
-    // Custom payment method validation checks
-    if (paymentMethod === 'UPI' && selectedUpiApp === 'Custom' && !upiId.includes('@')) {
-      return alert('Valid UPI ID daaliye (e.g., name@oksbi)');
-    }
     if (paymentMethod === 'Card' && (cardDetails.number.length < 16 || cardDetails.cvv.length < 3)) {
       return alert('Kripya valid card details fill karein.');
     }
@@ -150,33 +168,19 @@ const Checkout = () => {
                   </div>
                 </div>
 
-                {/* ==========================================
-                    DYNAMIC EXPANSION PANELS WITH REAL LOGO IMAGES
-                   ========================================== */}
+                {/* DYNAMIC EXPANSION PANELS FOR UPI & SCANNER */}
                 <AnimatePresence mode="wait">
                   {paymentMethod === 'UPI' && (
                     <motion.div 
                       initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                      className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl space-y-3 border border-slate-100 dark:border-slate-800"
+                      className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl space-y-4 border border-slate-100 dark:border-slate-800"
                     >
                       <span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Choose UPI Mode</span>
                       <div className="grid grid-cols-3 gap-2">
                         {[
-                          { 
-                            id: 'GPay', 
-                            label: 'Google Pay', 
-                            imgUrl: google_pay,
-                          },
-                          { 
-                            id: 'PhonePe', 
-                            label: 'PhonePe', 
-                            imgUrl: phone_pe
-                          },
-                          { 
-                            id: 'Custom', 
-                            label: 'Other UPI', 
-                            imgUrl: null // Placeholder for generic layout
-                          }
+                          { id: 'GPay', label: 'Google Pay', imgUrl: google_pay },
+                          { id: 'PhonePe', label: 'PhonePe', imgUrl: phone_pe },
+                          { id: 'Custom', label: 'Scan QR Code', imgUrl: null }
                         ].map((app) => {
                           const isSelected = selectedUpiApp === app.id;
                           return (
@@ -188,17 +192,15 @@ const Checkout = () => {
                                   : 'border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-darkcard/20 text-slate-500 hover:bg-white dark:hover:bg-darkcard'
                               }`}
                             >
-                              {/* LOGO IMAGE HOUSING CONTAINER */}
                               <div className="h-9 flex items-center justify-center p-1 w-full">
                                 {app.imgUrl ? (
                                   <img 
                                     src={app.imgUrl} 
                                     alt={app.label} 
                                     className="h-full object-contain max-w-[85%] mix-blend-multiply dark:mix-blend-normal dark:bg-white/90 dark:p-1 dark:rounded-md"
-                                    onError={(e) => { e.target.style.display = 'none'; }} // Safe fallback logic
                                   />
                                 ) : (
-                                  <QrCode className="h-6 w-6 text-slate-500" />
+                                  <QrCode className="h-6 w-6 text-brand-500 animate-pulse" />
                                 )}
                               </div>
                               <span className="text-[10px] font-bold tracking-tight">{app.label}</span>
@@ -207,12 +209,36 @@ const Checkout = () => {
                         })}
                       </div>
 
+                      {/* HIGH FIDELITY INTERACTIVE QR CODE SCANNER COMPONENT */}
                       {selectedUpiApp === 'Custom' ? (
-                        <input 
-                          type="text" required placeholder="Enter Virtual Payment Address (e.g., user@upi)"
-                          value={upiId} onChange={(e) => setUpiId(e.target.value)}
-                          className="w-full bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs focus:outline-none focus:border-brand-500 transition"
-                        />
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95 }} 
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-center space-y-3 shadow-inner"
+                        >
+                          <div className="p-3 bg-slate-50 dark:bg-darkbg rounded-xl border-2 border-dashed border-brand-400 relative">
+                            <img 
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=140&140&data=upi://pay?pa=cravingio@okhdfcbank%26pn=Cravingio%26am=${finalGrandTotal}%26cu=INR`}
+                              alt="Payment UPI QR Code" 
+                              className="h-32 w-32 object-contain"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-200">Scan this QR via any UPI App</p>
+                            <p className="text-[11px] font-mono font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md inline-block">
+                              Time remaining: {formatTime(qrCountdown)}
+                            </p>
+                          </div>
+                          
+                          <button 
+                            type="button"
+                            onClick={() => handlePlaceOrder()}
+                            className="text-[11px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg transition"
+                          >
+                            Simulate Payment Done ✓
+                          </button>
+                        </motion.div>
                       ) : (
                         <p className="text-[11px] text-slate-400 font-medium px-1">Order place karte hi aapke **{selectedUpiApp === 'GPay' ? 'Google Pay' : 'PhonePe'}** app par verification popup load ho jayega.</p>
                       )}
@@ -302,7 +328,9 @@ const Checkout = () => {
           </motion.div>
         )}
 
-        {/* STATE 3: SUCCESS WITH ACTIVE MAP TRACKER */}
+        {/* ==========================================
+            STATE 3: SUCCESS WITH ACTIVE MAP TRACKER + FEEDBACK TRIGGER
+           ========================================== */}
         {paymentState === 'SUCCESS' && (
           <motion.div 
             key="success-screen" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
@@ -316,21 +344,42 @@ const Checkout = () => {
               <p className="text-xs text-slate-400 mt-1">Order conform ho chuka hai. Live marker coordinates map neeche chal rha hai.</p>
             </div>
 
+            {/* Tracking Map Component */}
             <div className="text-left relative z-10">
               <TrackingMap orderId={activeOrderId} />
             </div>
             
-            <div className="flex gap-3">
+            {/* Action Buttons Hub */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* BRAND NEW: CONTEXTUAL RATE BUTTON INTEGRATION */}
+              <button 
+                onClick={() => setFeedbackOpen(true)} // <-- 3. TRIGGERS THE RATING WINDOW
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10"
+              >
+                <Award className="h-4 w-4" />
+                <span>Rate Food & Tip Rider ✓</span>
+              </button>
+
               <button onClick={() => navigate('/')} className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs py-2.5 rounded-xl transition">
                 Return to Shop
-              </button>
-              <button onClick={() => navigate('/recipes')} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition">
-                View Recipes Vault
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ==========================================
+          DYNAMIC ORDER FEEDBACK MODAL OVERLAY PORTAL
+         ========================================== */}
+      <OrderFeedbackModal 
+        isOpen={feedbackOpen} 
+        onClose={() => {
+          setFeedbackOpen(false);
+          navigate('/dashboard'); // Feedback dene ke baad client hub par send kar do!
+        }} 
+        orderId={activeOrderId}
+        restaurantName="The Truffle Crust Pizza"
+      />
     </div>
   );
 };

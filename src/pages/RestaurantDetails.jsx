@@ -24,11 +24,11 @@ const RestaurantDetails = () => {
         setMenu(resMenu.data.data);
       } catch (err) {
         console.error("Sandbox mode activation:", err);
-        // Fallback mocked details engine parameters
+        // Fallback mockup details with explicit food item image links
         setRestaurant({ name: 'The Truffle Crust Pizza', rating: 4.8, banner: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1000' });
         setMenu([
-          { _id: 'food_1', name: 'Burrata Truffle Blossom Pizza', description: 'Fresh creamy burrata cheese spread across charcoal high-hydration dough base drops.', price: 549, category: 'Premium' },
-          { _id: 'food_2', name: 'Classic Pepperoni Hot Honey', description: 'Spicy dry-cured salami curls topped with hot chili-infused honey glazes.', price: 429, category: 'Classic' }
+          { _id: 'food_1', name: 'Burrata Truffle Blossom Pizza', description: 'Fresh creamy burrata cheese spread across charcoal high-hydration dough base drops with aromatic white truffle oils.', price: 549, category: 'Premium', image: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=300&auto=format&fit=crop&q=80', isVeg: true },
+          { _id: 'food_2', name: 'Classic Pepperoni Hot Honey Pizza', description: 'Spicy dry-cured artisan pepperoni curls topped with pure organic hot chili-infused honey glazes.', price: 429, category: 'Classic', image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=300&auto=format&fit=crop&q=80', isVeg: false }
         ]);
       } finally {
         setLoading(false);
@@ -45,18 +45,18 @@ const RestaurantDetails = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full rounded-3xl" />
         <Skeleton className="h-8 w-1/3" />
         <div className="space-y-4">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-300">
       {/* Editorial Profile Banner */}
       <div className="h-48 sm:h-64 rounded-3xl overflow-hidden relative shadow-inner bg-slate-100 dark:bg-slate-800">
         <img src={restaurant?.banner} alt="Banner" className="w-full h-full object-cover" />
@@ -80,38 +80,57 @@ const RestaurantDetails = () => {
         <div className="space-y-4">
           {menu.map((food) => {
             const qty = getItemQty(food._id);
+            // Dynamic check for vegetable parameters
+            const checkVeg = food.isVeg !== undefined ? food.isVeg : true;
+
             return (
-              <div key={food._id} className="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/80 flex justify-between items-center gap-4 transition-all">
+              <div key={food._id} className="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-xs border border-slate-100 dark:border-slate-800/80 flex justify-between items-center gap-6 transition-all hover:shadow-md">
+                
+                {/* Left Side: Food Description Details */}
                 <div className="space-y-1.5 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" title="Vegetarian Item Flag" />
-                    <h4 className="font-bold text-slate-800 dark:text-white text-base">{food.name}</h4>
+                    <span 
+                      className={`h-2 w-2 rounded-full inline-block shrink-0 ${checkVeg ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                      title={checkVeg ? "Vegetarian" : "Non-Vegetarian"} 
+                    />
+                    <h4 className="font-black text-slate-800 dark:text-white text-base tracking-tight">{food.name}</h4>
                   </div>
-                  <p className="text-xs text-slate-400 max-w-xl leading-relaxed">{food.description}</p>
-                  <span className="font-black text-slate-700 dark:text-slate-200 text-sm block pt-1">₹{food.price}</span>
+                  <p className="text-xs text-slate-400 max-w-xl leading-relaxed font-medium">{food.description}</p>
+                  <span className="font-black text-slate-800 dark:text-slate-100 text-sm block pt-1">₹{food.price}</span>
                 </div>
 
-                {/* Micro Action Cart Controller Button Interface */}
-                <div className="shrink-0">
-                  {qty > 0 ? (
-                    <div className="flex items-center space-x-3 bg-brand-500 text-white rounded-xl p-1.5 shadow-md">
-                      <button onClick={() => updateQuantity(food._id, -1)} className="p-1 rounded-md hover:bg-white/10 transition">
-                        <Minus className="h-3.5 w-3.5 stroke-[3]" />
+                {/* Right Side: PREMIUM IMAGE CONTAINER WITH FLOATING COUNTER BOX */}
+                <div className="relative h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-2xl overflow-hidden shadow-xs border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                  <img 
+                    src={food.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300'} 
+                    alt={food.name} 
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                    loading="lazy"
+                  />
+
+                  {/* Floating Micro Action Cart Controller Wrapper */}
+                  <div className="absolute bottom-1.5 inset-x-1.5 flex justify-center z-10">
+                    {qty > 0 ? (
+                      <div className="flex items-center space-x-2 bg-brand-500 text-white rounded-xl p-1 shadow-md w-full justify-between backdrop-blur-xs">
+                        <button onClick={() => updateQuantity(food._id, -1)} className="p-0.5 rounded-md hover:bg-white/10 transition focus:outline-none">
+                          <Minus className="h-3 w-3 stroke-[3]" />
+                        </button>
+                        <span className="font-mono font-black text-xs w-4 text-center">{qty}</span>
+                        <button onClick={() => updateQuantity(food._id, 1)} className="p-0.5 rounded-md hover:bg-white/10 transition focus:outline-none">
+                          <Plus className="h-3 w-3 stroke-[3]" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => addToCart(food)}
+                        className="w-full bg-white/90 dark:bg-slate-900/90 hover:bg-brand-500 dark:hover:bg-brand-500 text-slate-800 dark:text-white hover:text-white dark:hover:text-white py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition shadow-sm border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xs focus:outline-none"
+                      >
+                        Add +
                       </button>
-                      <span className="font-mono font-bold text-sm w-4 text-center">{qty}</span>
-                      <button onClick={() => updateQuantity(food._id, 1)} className="p-1 rounded-md hover:bg-white/10 transition">
-                        <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => addToCart(food)}
-                      className="border-2 border-slate-200 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500 p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-brand-500 font-bold transition flex items-center justify-center bg-slate-50 dark:bg-slate-900"
-                    >
-                      <Plus className="h-4 w-4 stroke-[2.5]" />
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
+
               </div>
             );
           })}
